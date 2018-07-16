@@ -8,6 +8,10 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true }
 });
 
+userSchema.methods.validatePassword = function(password) {
+  return password === this.password;
+};
+
 userSchema.set('toObject', {
   virtuals: true,
   versionKey: false,
