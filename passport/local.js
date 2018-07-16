@@ -4,7 +4,7 @@ const { Strategy: LocalStrategy } = require('passport-local');
 const User = require('../models/user');
 
 // ===== Define and create basicStrategy =====
-const localstrategy = new LocalStrategy((username, password, done) => {
+const localStrategy = new LocalStrategy((username, password, done) => {
   let user;
   User.findOne({ username })
     .then(results => {
@@ -30,6 +30,9 @@ const localstrategy = new LocalStrategy((username, password, done) => {
       if (err.reason === 'LoginError') {
         return done(null, false);
       }
+      console.log('here we are');
       return done(err);
     });
 });
+
+module.exports = localStrategy;
