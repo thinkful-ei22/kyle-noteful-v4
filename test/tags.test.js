@@ -16,7 +16,7 @@ const expect = chai.expect;
 describe('Noteful API - Tags', function () {
 
   before(function () {
-    return mongoose.connect(TEST_MONGODB_URI)
+    return mongoose.connect(TEST_MONGODB_URI, { useNewUrlParser: true })
       .then(() => mongoose.connection.db.dropDatabase());
   });
 
@@ -270,7 +270,7 @@ describe('Noteful API - Tags', function () {
         .then(function (res) {
           expect(res).to.have.status(204);
           expect(res.body).to.be.empty;
-          return Tag.count({ _id: data.id });
+          return Tag.countDocuments({ _id: data.id });
         })
         .then(count => {
           expect(count).to.equal(0);
