@@ -57,7 +57,7 @@ app.use((err, req, res, next) => {
 // Listen for incoming connections
 if (process.env.NODE_ENV !== 'test') {
   // Connect to DB and Listen for incoming connections
-  mongoose.connect(MONGODB_URI)
+  mongoose.connect(MONGODB_URI, { useNewUrlParser: true })
     .then(instance => {
       const conn = instance.connections[0];
       console.info(`Connected to: mongodb://${conn.host}:${conn.port}/${conn.name}`);
