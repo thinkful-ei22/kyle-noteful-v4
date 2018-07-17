@@ -13,7 +13,7 @@ const seedFolders = require('../db/seed/folders');
 const seedTags = require('../db/seed/tags');
 
 console.log(`Connecting to mongodb at ${MONGODB_URI}`);
-mongoose.connect(MONGODB_URI)
+mongoose.connect(MONGODB_URI, { useNewUrlParser: true })
   .then(() => {
     console.info('Dropping Database');
     return mongoose.connection.db.dropDatabase();
