@@ -14,8 +14,9 @@ router.use('/', jwtAuth);
 /* ========== GET/READ ALL ITEMS ========== */
 router.get('/', (req, res, next) => {
   const { searchTerm, folderId, tagId } = req.query;
+  const userId = req.user.id;
 
-  let filter = {};
+  let filter = { userId };
 
   if (searchTerm) {
     const re = new RegExp(searchTerm, 'i');
@@ -44,6 +45,7 @@ router.get('/', (req, res, next) => {
 /* ========== GET/READ A SINGLE ITEM ========== */
 router.get('/:id', (req, res, next) => {
   const { id } = req.params;
+  const userId = req.user.id;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
     const err = new Error('The `id` is not valid');
@@ -51,7 +53,7 @@ router.get('/:id', (req, res, next) => {
     return next(err);
   }
 
-  Note.findById(id)
+  Note.findOne({ _id: id, userId })
     .populate('tags')
     .then(result => {
       if (result) {
@@ -68,6 +70,7 @@ router.get('/:id', (req, res, next) => {
 /* ========== POST/CREATE AN ITEM ========== */
 router.post('/', (req, res, next) => {
   const { title, content, folderId, tags = [] } = req.body;
+  const userId = req.user.id;
 
   /***** Never trust users - validate input *****/
   if (!title) {
@@ -92,7 +95,7 @@ router.post('/', (req, res, next) => {
     });
   }
 
-  const newNote = { title, content, folderId, tags };
+  const newNote = { title, content, folderId, tags, userId };
 
   Note.create(newNote)
     .then(result => {
@@ -109,9 +112,22 @@ router.post('/', (req, res, next) => {
 /* ========== PUT/UPDATE A SINGLE ITEM ========== */
 router.put('/:id', (req, res, next) => {
   const { id } = req.params;
-  const { title, content, folderId, tags = [] } = req.body;
+  const { title, content, folderId, tags = [], userId } = req.body;
+  const currentUserId = req.user.id;
 
   /***** Never trust users - validate input *****/
+  if (!mongoose.Types.ObjectId.isValid(currentUserId)) {
+    const err = new Error('The `userId` is not valid');
+    err.status = 400;
+    return next(err);
+  }
+
+  if (userId !== currentUserId) {
+    const err = new Error('That note does not belong to you');
+    err.status = 401;
+    return next(err);
+  }
+
   if (!mongoose.Types.ObjectId.isValid(id)) {
     const err = new Error('The `id` is not valid');
     err.status = 400;
@@ -141,7 +157,7 @@ router.put('/:id', (req, res, next) => {
 
   const updateNote = { title, content, folderId, tags };
 
-  Note.findByIdAndUpdate(id, updateNote, { new: true })
+  Note.findOneAndUpdate({ _id: id, userId: currentUserId }, updateNote, { new: true })
     .then(result => {
       if (result) {
         res.json(result);
@@ -157,6 +173,7 @@ router.put('/:id', (req, res, next) => {
 /* ========== DELETE/REMOVE A SINGLE ITEM ========== */
 router.delete('/:id', (req, res, next) => {
   const { id } = req.params;
+  const userId = req.user.id;
 
   /***** Never trust users - validate input *****/
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -165,7 +182,7 @@ router.delete('/:id', (req, res, next) => {
     return next(err);
   }
 
-  Note.findByIdAndRemove(id)
+  Note.deleteOne({ _id: id, userId })
     .then(() => {
       res.sendStatus(204);
     })

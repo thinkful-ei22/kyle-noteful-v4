@@ -7,10 +7,12 @@ const { MONGODB_URI } = require('../config');
 const Note = require('../models/note');
 const Folder = require('../models/folder');
 const Tag = require('../models/tag');
+const User = require('../models/user');
 
 const seedNotes = require('../db/seed/notes');
 const seedFolders = require('../db/seed/folders');
 const seedTags = require('../db/seed/tags');
+const seedUsers = require('../db/seed/users');
 
 console.log(`Connecting to mongodb at ${MONGODB_URI}`);
 mongoose.connect(MONGODB_URI, { useNewUrlParser: true })
@@ -21,6 +23,9 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true })
   .then(() => {
     console.info('Seeding Database');
     return Promise.all([
+
+      User.insertMany(seedUsers),
+      User.createIndexes(),
 
       Note.insertMany(seedNotes),
 

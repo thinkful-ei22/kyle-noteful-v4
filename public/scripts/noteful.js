@@ -170,13 +170,11 @@ const noteful = (function () {
       event.preventDefault();
 
       const editForm = $(event.currentTarget);
-      const noteObj = {
-        id: store.currentNote.id,
-        title: editForm.find('.js-note-title-entry').val(),
-        content: editForm.find('.js-note-content-entry').val(),
-        folderId: editForm.find('.js-note-folder-entry').val(),
-        tags: editForm.find('.js-note-tags-entry').val()
-      };
+      const noteObj = Object.assign({}, store.currentNote);
+      noteObj.title = editForm.find('.js-note-title-entry').val();
+      noteObj.content = editForm.find('.js-note-content-entry').val();
+      noteObj.folderId = editForm.find('.js-note-folder-entry').val();
+      noteObj.tags = editForm.find('.js-note-tags-entry').val();
 
       if (store.currentNote.id) {
         api.update(`/api/notes/${noteObj.id}`, noteObj)
