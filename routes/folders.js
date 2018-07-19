@@ -19,6 +19,7 @@ router.get('/', (req, res, next) => {
   const filter = { userId };
 
   Folder.find(filter)
+    .collation({ locale: 'en' })
     .sort('name')
     .then(results => {
       res.json(results);
