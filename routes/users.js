@@ -8,14 +8,30 @@ const router = express.Router();
 
 /* ========== POST/CREATE AN ITEM ========== */
 router.post('/', (req, res, next) => {
-  const { fullname, username, password } = req.body;
+  const { username, password } = req.body;
+  let { fullname } = req.body;
 
   const requiredFields = ['username', 'password'];
   const missingField = requiredFields.find(field => !(field in req.body));
   
   if (missingField) {
-    const err = new Error(`Missing ${missingField} in request body`);
-    err.status = 400;
+    const err = new Error(`Missing \`${missingField}\` in request body`);
+    err.status = 422;
+    err.reason = 'ValidationError';
+    err.location = `${missingField}`;
+    return next(err);
+  }
+
+  const stringFields = ['username', 'password', 'fullname'];
+  const nonStringField = stringFields.find(field => {
+    return ((req.body[field]) && (typeof req.body[field] !== 'string'));
+  });
+  
+  if (nonStringField) {
+    const err = new Error(`The \`${nonStringField}\` must be of type \`string\``);
+    err.status = 422;
+    err.reason = 'ValidationError';
+    err.location = `${nonStringField}`;
     return next(err);
   }
 
@@ -28,21 +44,16 @@ router.post('/', (req, res, next) => {
     const err = new Error(
       `The \`${nonTrimmedField}\` cannot begin or end with whitespace`
     );
-    err.status = 400;
+    err.status = 422;
+    err.reason = 'ValidationError';
+    err.location = `${nonTrimmedField}`;
     return next(err);
   }
 
-  const stringFields = ['username', 'password', 'fullname'];
-  const nonStringField = stringFields.find(field => {
-    return req.body[field] && typeof req.body[field] !== 'string';
-  });
+  if (fullname) {
+    fullname = fullname.trim();
+  }
   
-  if (nonStringField) {
-    const err = new Error(`The \`${nonStringField}\` must be of type \`string\``);
-    err.status = 400;
-    return next(err);
-  }
-
   const sizedFields = {
     username: {
       min: 1
@@ -76,7 +87,6 @@ router.post('/', (req, res, next) => {
     });
   }
 
-
   return User.hashPassword(password)
     .then(digest => {
       const newUser = {
@@ -95,7 +105,9 @@ router.post('/', (req, res, next) => {
     .catch(err => {
       if (err.code === 11000) {
         err = new Error('That username already exists');
-        err.status = 400;
+        err.reason = 'ValidationError';
+        err.status = 422;
+        err.location = 'username';
       }
       next(err);
     });
