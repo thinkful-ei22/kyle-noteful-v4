@@ -3,7 +3,6 @@
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 const mongoose = require('mongoose');
-// const express = require('express');
 
 const app = require('../server');
 const Tag = require('../models/tag');
@@ -16,7 +15,7 @@ const { createAuthToken } = require('../utils/auth');
 chai.use(chaiHttp);
 const expect = chai.expect;
 
-describe.only('Noteful API - Tags', function () {
+describe('Noteful API - Tags', function () {
 
   let user;
   let token;
