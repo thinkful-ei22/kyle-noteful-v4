@@ -109,7 +109,8 @@ router.get('/:id', (req, res, next) => {
 
 /* ========== POST/CREATE AN ITEM ========== */
 router.post('/', (req, res, next) => {
-  const { title, content, folderId, tags = [] } = req.body;
+  const { title, content, tags = [] } = req.body;
+  const folderId = req.body.folderId ? req.body.folderId : undefined;
   const userId = req.user.id;
 
   /***** Never trust users - validate input *****/
@@ -158,7 +159,8 @@ router.post('/', (req, res, next) => {
 /* ========== PUT/UPDATE A SINGLE ITEM ========== */
 router.put('/:id', (req, res, next) => {
   const { id } = req.params;
-  const { title, content, folderId, tags = [], userId } = req.body;
+  const { title, content, tags = [], userId } = req.body;
+  const folderId = req.body.folderId ? req.body.folderId : undefined;
   const currentUserId = req.user.id;
 
   /***** Never trust users - validate input *****/

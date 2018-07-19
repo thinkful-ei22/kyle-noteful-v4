@@ -248,7 +248,9 @@ describe('Noteful API - Notes', function () {
     it('should create and return a new item when provided valid data', function () {
       const newItem = {
         title: 'The best article about cats ever!',
-        content: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor...'
+        content: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor...',
+        folderId: '',
+        tags: []
       };
       let res;
       return chai.request(app)
@@ -335,7 +337,9 @@ describe('Noteful API - Notes', function () {
       const updateItem = {
         title: 'What about dogs?!',
         content: 'Lorem ipsum dolor sit amet, sed do eiusmod tempor...',
-        userId: user.id
+        userId: user.id,
+        folderId: '',
+        tags: []
       };
       let data;
       return Note.findOne({ userId: user.id })
