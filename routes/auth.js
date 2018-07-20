@@ -2,24 +2,16 @@
 
 const express = require('express');
 const passport = require('passport');
-
-const { createAuthToken } = require('../utils/auth');
+const { newJwtHandler } = require('../controllers/auth');
 
 const router = express.Router();
 
-const options = { session: false, failWithError: true };
-const localAuth = passport.authenticate('local', options);
-const jwtAuth = passport.authenticate('jwt', options);
+const authOptions = { session: false, failWithError: true };
+const localAuth = passport.authenticate('local', authOptions);
+const jwtAuth = passport.authenticate('jwt', authOptions);
 
-router.post('/login', localAuth, (req, res) => {
-  const authToken = createAuthToken(req.user);
-  return res.json({ authToken });
-});
+router.post('/login', localAuth, newJwtHandler);
 
-router.post('/refresh', jwtAuth, (req, res) => {
-  const authToken = createAuthToken(req.user);
-  return res.json({ authToken });
-});
-
+router.post('/refresh', jwtAuth, newJwtHandler);
 
 module.exports = router;
