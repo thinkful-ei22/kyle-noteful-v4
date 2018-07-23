@@ -6,7 +6,7 @@ const Folder = require('../models/folder');
 const Tag = require('../models/tag');
 
 // HELPERS
-const validateFolderId = function(folderId, userId) {
+const validateFolderIdPromise = function (folderId, userId) {
   if (folderId === undefined) {
     return Promise.resolve();
   }
@@ -25,7 +25,7 @@ const validateFolderId = function(folderId, userId) {
     });
 };
 
-const validateTagIds = function(tags, userId) {
+const validateTagIdsPromise = function (tags, userId) {
   if (tags === undefined) {
     return Promise.resolve();
   }
@@ -44,12 +44,69 @@ const validateTagIds = function(tags, userId) {
     });
 };
 
-// CONTROLLERS
-const notesListGet = function (req, res, next) {
+const validateTitlePresence = function (note, callback) {
+  if (!note.title) {
+    const err = new Error('Missing `title` in request body');
+    err.status = 400;
+    return callback(err);
+  }
+};
+
+const validateFolderId = function (note, callback) {
+  if (note.folderId && !mongoose.Types.ObjectId.isValid(note.folderId)) {
+    const err = new Error('The `folderId` is not valid');
+    err.status = 400;
+    return callback(err);
+  }
+};
+
+const validateTagIds = function (note, callback) {
+  if (note.tags) {
+    note.tags.forEach((tag) => {
+      if (!mongoose.Types.ObjectId.isValid(tag)) {
+        const err = new Error('The tags `id` is not valid');
+        err.status = 400;
+        return callback(err);
+      }
+    });
+  }
+};
+
+const validateNote = function(note, callback) {
+
+  validateTitlePresence(note, callback);
+  // if (!note.title) {
+  //   const err = new Error('Missing `title` in request body');
+  //   err.status = 400;
+  //   return callback(err);
+  // }
+
+  validateFolderId(note, callback);
+  // if (note.folderId && !mongoose.Types.ObjectId.isValid(note.folderId)) {
+  //   const err = new Error('The `folderId` is not valid');
+  //   err.status = 400;
+  //   return callback(err);
+  // }
+
+  validateTagIds(note, callback);
+  // if (note.tags) {
+  //   note.tags.forEach((tag) => {
+  //     if (!mongoose.Types.ObjectId.isValid(tag)) {
+  //       const err = new Error('The tags `id` is not valid');
+  //       err.status = 400;
+  //       return callback(err);
+  //     }
+  //   });
+  // }
+
+  // return note;
+};
+
+const constructListQueryFilter = function(req) {
   const { searchTerm, folderId, tagId } = req.query;
   const userId = req.user.id;
 
-  let filter = { userId };
+  const filter = { userId };
 
   if (searchTerm) {
     const re = new RegExp(searchTerm, 'i');
@@ -63,6 +120,30 @@ const notesListGet = function (req, res, next) {
   if (tagId) {
     filter.tags = tagId;
   }
+
+  return filter;
+};
+
+const validateDatabaseId = function (id, callback) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    const err = new Error('The `id` is not valid');
+    err.status = 400;
+    return callback(err);
+  }
+  return id;
+};
+
+const successResultHandler = function (result, res, next) {
+  if (result) {
+    return res.json(result);
+  } else {
+    return next();
+  }
+};
+
+// CONTROLLERS
+const notesListGet = function (req, res, next) {
+  const filter = constructListQueryFilter(req);
 
   Note.find(filter)
     .populate('tags')
@@ -79,20 +160,12 @@ const noteDetailsGet = function (req, res, next) {
   const { id } = req.params;
   const userId = req.user.id;
 
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    const err = new Error('The `id` is not valid');
-    err.status = 400;
-    return next(err);
-  }
+  const validId = validateDatabaseId(id, next);
 
-  Note.findOne({ _id: id, userId })
+  Note.findOne({ _id: validId, userId })
     .populate('tags')
     .then(result => {
-      if (result) {
-        res.json(result);
-      } else {
-        next();
-      }
+      successResultHandler(result, res, next);
     })
     .catch(err => {
       next(err);
@@ -104,34 +177,12 @@ const noteCreatePost = function (req, res, next) {
   const folderId = req.body.folderId ? req.body.folderId : undefined;
   const userId = req.user.id;
 
-  /***** Never trust users - validate input *****/
-  if (!title) {
-    const err = new Error('Missing `title` in request body');
-    err.status = 400;
-    return next(err);
-  }
-
-  if (folderId && !mongoose.Types.ObjectId.isValid(folderId)) {
-    const err = new Error('The `folderId` is not valid');
-    err.status = 400;
-    return next(err);
-  }
-
-  if (tags) {
-    tags.forEach((tag) => {
-      if (!mongoose.Types.ObjectId.isValid(tag)) {
-        const err = new Error('The tags `id` is not valid');
-        err.status = 400;
-        return next(err);
-      }
-    });
-  }
-
   const newNote = { title, content, folderId, tags, userId };
+  validateNote(newNote, next);
 
   Promise.all([
-    validateFolderId(folderId, userId),
-    validateTagIds(tags, userId)
+    validateFolderIdPromise(folderId, userId),
+    validateTagIdsPromise(tags, userId)
   ])
     .then(() => {
       return Note.create(newNote);
@@ -196,8 +247,8 @@ const noteDetailsPut = function (req, res, next) {
   const updateNote = { title, content, folderId, tags };
 
   Promise.all([
-    validateFolderId(folderId, currentUserId),
-    validateTagIds(tags, currentUserId)
+    validateFolderIdPromise(folderId, currentUserId),
+    validateTagIdsPromise(tags, currentUserId)
   ])
     .then(() => {
       return Note.findOneAndUpdate(

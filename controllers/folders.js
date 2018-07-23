@@ -4,28 +4,52 @@ const mongoose = require('mongoose');
 const Folder = require('../models/folder');
 const Note = require('../models/note');
 
+// HELPERS
+const validateNamePresence = function (item, callback) {
+  if (!item.name) {
+    const err = new Error('Missing `name` in request body');
+    err.status = 400;
+    return callback(err);
+  }
+  return item;
+};
+const validateDatabaseId = function (id, callback) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    const err = new Error('The `id` is not valid');
+    err.status = 400;
+    return callback(err);
+  }
+  return id;
+};
+const duplicateErrorHandler = function (err) {
+  if (err.code === 11000) {
+    err = new Error('Folder name already exists');
+    err.status = 400;
+  }
+  return err;
+};
+const successResultHandler = function (result, res, next) {
+  if (result) {
+    return res.json(result);
+  } else {
+    return next();
+  }
+};
+
+// CONTROLLERS
 const folderCreatePost = function (req, res, next) {
   const { name } = req.body;
   const userId = req.user.id;
 
   const newFolder = { name, userId };
+  const validFolder = validateNamePresence(newFolder, next);
 
-  /***** Never trust users - validate input *****/
-  if (!name) {
-    const err = new Error('Missing `name` in request body');
-    err.status = 400;
-    return next(err);
-  }
-
-  Folder.create(newFolder)
+  Folder.create(validFolder)
     .then(result => {
       res.location(`${req.originalUrl}/${result.id}`).status(201).json(result);
     })
     .catch(err => {
-      if (err.code === 11000) {
-        err = new Error('Folder name already exists');
-        err.status = 400;
-      }
+      err = duplicateErrorHandler(err);
       next(err);
     });
 };
@@ -38,7 +62,7 @@ const foldersListGet = function (req, res, next) {
     .collation({ locale: 'en' })
     .sort('name')
     .then(results => {
-      res.json(results);
+      successResultHandler(results, res, next);
     })
     .catch(err => {
       next(err);
@@ -48,22 +72,13 @@ const folderDetailsGet = function (req, res, next) {
   const { id } = req.params;
   const userId = req.user.id;
 
-  /***** Never trust users - validate input *****/
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    const err = new Error('The `id` is not valid');
-    err.status = 400;
-    return next(err);
-  }
+  const validId = validateDatabaseId(id, next);
 
-  let filter = { _id: id, userId };
+  let filter = { _id: validId, userId };
 
   Folder.findOne(filter)
     .then(result => {
-      if (result) {
-        res.json(result);
-      } else {
-        next();
-      }
+      successResultHandler(result, res, next);
     })
     .catch(err => {
       next(err);
@@ -73,36 +88,18 @@ const folderDetailsPut = function (req, res, next) {
   const { id } = req.params;
   const { name } = req.body;
   const userId = req.user.id;
-
-  /***** Never trust users - validate input *****/
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    const err = new Error('The `id` is not valid');
-    err.status = 400;
-    return next(err);
-  }
-
-  if (!name) {
-    const err = new Error('Missing `name` in request body');
-    err.status = 400;
-    return next(err);
-  }
-
-  const filter = { _id: id, userId };
   const updateFolder = { name };
 
-  Folder.findOneAndUpdate(filter, updateFolder, { new: true })
+  const validId = validateDatabaseId(id, next);
+  const validFolder = validateNamePresence(updateFolder, next);
+  const filter = { _id: validId, userId };
+
+  Folder.findOneAndUpdate(filter, validFolder, { new: true })
     .then(result => {
-      if (result) {
-        res.json(result);
-      } else {
-        next();
-      }
+      successResultHandler(result, res, next);
     })
     .catch(err => {
-      if (err.code === 11000) {
-        err = new Error('Folder name already exists');
-        err.status = 400;
-      }
+      err = duplicateErrorHandler(err);
       next(err);
     });
 };
@@ -110,16 +107,10 @@ const folderDetailsDelete = function (req, res, next) {
   const { id } = req.params;
   const userId = req.user.id;
 
-  /***** Never trust users - validate input *****/
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    const err = new Error('The `id` is not valid');
-    err.status = 400;
-    return next(err);
-  }
+  const validId = validateDatabaseId(id, next);
 
-  const folderFilter = { _id: id, userId };
+  const folderFilter = { _id: validId, userId };
   const folderRemovePromise = Folder.deleteOne(folderFilter);
-
   const noteRemovePromise = Note.updateMany(
     { folderId: id, userId },
     { $unset: { folderId: '' } }
